@@ -1,0 +1,145 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Environment Variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+stardust-backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Frontend (Node.js/React/Vue/etc)
+stardust-frontend/node_modules/
+stardust-frontend/dist/
+stardust-frontend/build/
+stardust-frontend/.next/
+stardust-frontend/out/
+stardust-frontend/.nuxt/
+stardust-frontend/.vuepress/dist/
+stardust-frontend/.serverless/
+stardust-frontend/.fusebox/
+stardust-frontend/.dynamodb/
+stardust-frontend/.tern-port
+stardust-frontend/npm-debug.log*
+stardust-frontend/yarn-debug.log*
+stardust-frontend/yarn-error.log*
+stardust-frontend/lerna-debug.log*
+stardust-frontend/.env.local
+stardust-frontend/.env.development.local
+stardust-frontend/.env.test.local
+stardust-frontend/.env.production.local
+
+# Logs
+logs
+*.log
+
+# Django specific
+stardust-backend/staticfiles/
+stardust-backend/media/
+stardust-backend/db.sqlite3
+stardust-backend/local_settings.py
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
