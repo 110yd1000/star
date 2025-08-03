@@ -1,0 +1,36 @@
+# Core Django
+Django==4.2.7
+djangorestframework==3.14.0
+django-environ==0.12.0
+
+# Authentication & JWT
+djangorestframework_simplejwt==5.5.1
+
+# Database
+psycopg2-binary==2.9.9
+
+# CORS
+django-cors-headers==4.3.1
+
+# API Documentation
+drf-yasg==1.21.7
+
+# Filtering
+django-filter==23.5
+
+# Email
+django-anymail==10.2
+
+# SMS (Twilio)
+twilio==8.10.3
+
+# File handling
+Pillow==10.1.0
+
+# Utilities
+python-decouple==3.8
+celery==5.3.4
+redis==5.0.1
+
+# Development
+django-debug-toolbar==4.2.0

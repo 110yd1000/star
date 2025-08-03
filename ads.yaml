@@ -1,0 +1,939 @@
+openapi: 3.0.3
+info:
+  title: Stardust Ads API
+  version: 1.0.0
+  description: |
+    Classified Ads endpoints for listing, creating, moderating, and managing advertisements.
+    
+    ## Authentication
+    Most endpoints require authentication using Bearer tokens. Public endpoints are clearly marked.
+    
+    ## Rate Limiting
+    API requests are limited to 1000 requests per hour per authenticated user.
+    
+    ## Pagination
+    List endpoints support pagination using `limit` and `offset` parameters.
+servers:
+  - url: /api/v1/ads/
+
+security:
+  - bearerAuth: []
+
+paths:
+  /categories/:
+    get:
+      summary: Get all categories and their subcategories
+      tags: [Taxonomy]
+      security: [] # Public endpoint
+      responses:
+        '200':
+          description: List of categories and subcategories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryWithSubcategories'
+              example:
+                - id: 1
+                  name: "Electronics"
+                  slug: "electronics"
+                  subcategories:
+                    - id: 10
+                      name: "Mobile Phones"
+                      slug: "mobile-phones"
+                    - id: 11
+                      name: "Laptops"
+                      slug: "laptops"
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /locations/:
+    get:
+      summary: Get supported countries, provinces, and cities
+      tags: [Geography]
+      security: [] # Public endpoint
+      responses:
+        '200':
+          description: List of locations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CountryWithProvinces'
+              example:
+                - country: "South Africa"
+                  provinces:
+                    - id: 1
+                      name: "Western Cape"
+                      cities:
+                        - id: 10
+                          name: "Cape Town"
+                        - id: 11
+                          name: "Stellenbosch"
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /ads/:
+    post:
+      summary: Create a new advertisement
+      tags: [Ads]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdCreateRequest'
+            example:
+              title: "iPhone 13 Pro Max - Excellent Condition"
+              description: "Selling my iPhone 13 Pro Max, 256GB, Space Gray. Perfect condition with original box and charger."
+              price: 15000.00
+              currency_code: "ZAR"
+              currency_symbol: "R"
+              subcategory: 10
+              province: 1
+              city: 10
+              ad_type: "for_sale"
+              contact_visibility: "registered"
+              contact_method: "both"
+              contact_phone: "+27821234567"
+              contact_email: "seller@example.com"
+      responses:
+        '201':
+          description: Ad created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 12345
+                  status:
+                    type: string
+                    example: pending_approval
+                  message:
+                    type: string
+                    example: "Ad created successfully and is pending approval"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    get:
+      summary: List public ads
+      tags: [Ads]
+      security: [] # Public endpoint
+      parameters:
+        - in: query
+          name: subcategory
+          schema:
+            type: integer
+          description: Filter by subcategory ID
+        - in: query
+          name: ad_type
+          schema:
+            type: string
+            enum: [for_sale, for_rent, wanted]
+          description: Filter by ad type
+        - in: query
+          name: currency_code
+          schema:
+            type: string
+            enum: [ZAR, USD, MWK]
+          description: Filter by currency
+        - in: query
+          name: city
+          schema:
+            type: integer
+          description: Filter by city ID
+        - in: query
+          name: min_price
+          schema:
+            type: number
+            minimum: 0
+          description: Minimum price filter
+        - in: query
+          name: max_price
+          schema:
+            type: number
+            minimum: 0
+          description: Maximum price filter
+        - in: query
+          name: q
+          schema:
+            type: string
+            maxLength: 100
+          description: Search term for title and description
+        - in: query
+          name: created_after
+          schema:
+            type: string
+            format: date
+          description: Filter ads created after this date (YYYY-MM-DD)
+        - in: query
+          name: created_before
+          schema:
+            type: string
+            format: date
+          description: Filter ads created before this date (YYYY-MM-DD)
+        - in: query
+          name: sort_by
+          schema:
+            type: string
+            enum: [created_at, price, title]
+            default: created_at
+          description: Sort field
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort order
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of results per page
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of results to skip
+      responses:
+        '200':
+          description: List of ads with pagination info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdSummary'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+              example:
+                data:
+                  - id: 12345
+                    title: "iPhone 13 Pro Max - Excellent Condition"
+                    price: "R 15,000.00"
+                    location: "Cape Town, Western Cape"
+                    currency_code: "ZAR"
+                    ad_type: "for_sale"
+                    thumbnail: "https://example.com/images/thumb_12345.jpg"
+                    created_at: "2025-07-20T10:30:00Z"
+                pagination:
+                  total: 1500
+                  limit: 20
+                  offset: 0
+                  has_next: true
+                  has_previous: false
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /ads/{id}/:
+    get:
+      summary: Get full details of an ad
+      tags: [Ads]
+      security: [] # Public endpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Ad ID
+      responses:
+        '200':
+          description: Ad details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdDetail'
+              example:
+                id: 12345
+                title: "iPhone 13 Pro Max - Excellent Condition"
+                description: "Selling my iPhone 13 Pro Max, 256GB, Space Gray. Perfect condition with original box and charger."
+                price: "R 15,000.00"
+                location: "Cape Town, Western Cape"
+                currency_code: "ZAR"
+                ad_type: "for_sale"
+                thumbnail: "https://example.com/images/thumb_12345.jpg"
+                author_id: 456
+                contact_visibility: "registered"
+                contact_method: "both"
+                contact_info:
+                  phone: "+27821234567"
+                  email: "seller@example.com"
+                is_expired: false
+                created_at: "2025-07-20T10:30:00Z"
+                updated_at: "2025-07-20T10:30:00Z"
+                expires_at: "2025-10-20T10:30:00Z"
+                media:
+                  - "https://example.com/images/12345_1.jpg"
+                  - "https://example.com/images/12345_2.jpg"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    patch:
+      summary: Update an ad
+      tags: [Ads]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Ad ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdUpdateRequest'
+            example:
+              title: "iPhone 13 Pro Max - Price Reduced!"
+              price: 14000.00
+              contact_visibility: "public"
+      responses:
+        '200':
+          description: Ad updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 12345
+                  message:
+                    type: string
+                    example: "Ad updated successfully"
+                  updated_fields:
+                    type: array
+                    items:
+                      type: string
+                    example: ["title", "price", "contact_visibility"]
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      summary: Delete an ad
+      tags: [Ads]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Ad ID
+      responses:
+        '204':
+          description: Ad deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /ads/{id}/deactivate/:
+    post:
+      summary: Pause an ad manually
+      tags: [Ads]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Ad ID
+      responses:
+        '200':
+          description: Ad paused successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 12345
+                  status:
+                    type: string
+                    example: "paused"
+                  message:
+                    type: string
+                    example: "Ad has been paused successfully"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /ads/{id}/reactivate/:
+    post:
+      summary: Reactivate a paused ad
+      tags: [Ads]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Ad ID
+      responses:
+        '200':
+          description: Ad reactivated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 12345
+                  status:
+                    type: string
+                    example: "active"
+                  message:
+                    type: string
+                    example: "Ad has been reactivated successfully"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /ads/{id}/upload-media/:
+    post:
+      summary: Upload ad images
+      tags: [Ads]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Ad ID
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 10
+                  description: Image files (max 10, each max 5MB, formats: JPG, PNG, WebP)
+      responses:
+        '200':
+          description: Images uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uploaded_files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        filename:
+                          type: string
+                          example: "image1.jpg"
+                        url:
+                          type: string
+                          example: "https://example.com/images/12345_1.jpg"
+                        size:
+                          type: integer
+                          example: 2048576
+                  total_uploaded:
+                    type: integer
+                    example: 2
+                  message:
+                    type: string
+                    example: "2 images uploaded successfully"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "file_too_large"
+                message: "File size exceeds 5MB limit"
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /user/ads/:
+    get:
+      summary: Get current user's ads
+      tags: [User]
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, paused, pending_approval, rejected, expired]
+          description: Filter by ad status
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: User's ads with pagination
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserAdSummary'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from authentication endpoint
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "validation_error"
+            message: "Invalid input data"
+            details:
+              - field: "title"
+                message: "Title is required and must be between 5-100 characters"
+              - field: "price"
+                message: "Price must be a positive number"
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "unauthorized"
+            message: "Authentication token is required"
+
+    Forbidden:
+      description: Access denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "forbidden"
+            message: "You don't have permission to access this resource"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "not_found"
+            message: "The requested ad was not found"
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "rate_limit_exceeded"
+            message: "Too many requests. Please try again later."
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "internal_server_error"
+            message: "An unexpected error occurred. Please try again later."
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+          description: Detailed validation errors (optional)
+
+    PaginationInfo:
+      type: object
+      required: [total, limit, offset, has_next, has_previous]
+      properties:
+        total:
+          type: integer
+          description: Total number of items
+          example: 1500
+        limit:
+          type: integer
+          description: Items per page
+          example: 20
+        offset:
+          type: integer
+          description: Number of items skipped
+          example: 0
+        has_next:
+          type: boolean
+          description: Whether there are more items
+          example: true
+        has_previous:
+          type: boolean
+          description: Whether there are previous items
+          example: false
+
+    CategoryWithSubcategories:
+      type: object
+      required: [id, name, slug, subcategories]
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Electronics"
+        slug:
+          type: string
+          example: "electronics"
+        subcategories:
+          type: array
+          items:
+            type: object
+            required: [id, name, slug]
+            properties:
+              id:
+                type: integer
+                example: 10
+              name:
+                type: string
+                example: "Mobile Phones"
+              slug:
+                type: string
+                example: "mobile-phones"
+
+    CountryWithProvinces:
+      type: object
+      required: [country, provinces]
+      properties:
+        country:
+          type: string
+          example: "South Africa"
+        provinces:
+          type: array
+          items:
+            type: object
+            required: [id, name, cities]
+            properties:
+              id:
+                type: integer
+                example: 1
+              name:
+                type: string
+                example: "Western Cape"
+              cities:
+                type: array
+                items:
+                  type: object
+                  required: [id, name]
+                  properties:
+                    id:
+                      type: integer
+                      example: 10
+                    name:
+                      type: string
+                      example: "Cape Town"
+
+    AdCreateRequest:
+      type: object
+      required: [title, description, price, currency_code, currency_symbol, subcategory, province, city, contact_visibility, contact_method]
+      properties:
+        title:
+          type: string
+          minLength: 5
+          maxLength: 100
+          description: Ad title
+          example: "iPhone 13 Pro Max - Excellent Condition"
+        description:
+          type: string
+          minLength: 20
+          maxLength: 2000
+          description: Detailed ad description
+        price:
+          type: number
+          format: float
+          minimum: 0
+          description: Item price
+          example: 15000.00
+        currency_code:
+          type: string
+          enum: [ZAR, USD, MWK]
+          description: Currency code
+        currency_symbol:
+          type: string
+          enum: [R, $, MK]
+          description: Currency symbol
+        subcategory:
+          type: integer
+          minimum: 1
+          description: Subcategory ID
+        province:
+          type: integer
+          minimum: 1
+          description: Province ID
+        city:
+          type: integer
+          minimum: 1
+          description: City ID
+        ad_type:
+          type: string
+          enum: [for_sale, for_rent, wanted]
+          default: for_sale
+          description: Type of advertisement
+        contact_visibility:
+          type: string
+          enum: [by_request, registered, public]
+          description: Who can see contact information
+        contact_method:
+          type: string
+          enum: [phone, email, both]
+          description: Preferred contact method
+        contact_phone:
+          type: string
+          pattern: '^\+?[1-9]\d{1,14}$'
+          description: Contact phone number (required if contact_method includes phone)
+        contact_email:
+          type: string
+          format: email
+          description: Contact email (required if contact_method includes email)
+
+    AdSummary:
+      type: object
+      required: [id, title, price, location, currency_code, ad_type, created_at]
+      properties:
+        id:
+          type: integer
+          example: 12345
+        title:
+          type: string
+          example: "iPhone 13 Pro Max - Excellent Condition"
+        price:
+          type: string
+          description: Formatted price with currency
+          example: "R 15,000.00"
+        location:
+          type: string
+          description: City and province
+          example: "Cape Town, Western Cape"
+        currency_code:
+          type: string
+          example: "ZAR"
+        ad_type:
+          type: string
+          example: "for_sale"
+        thumbnail:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to thumbnail image
+          example: "https://example.com/images/thumb_12345.jpg"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-07-20T10:30:00Z"
+
+    AdDetail:
+      allOf:
+        - $ref: '#/components/schemas/AdSummary'
+        - type: object
+          required: [description, author_id, contact_visibility, contact_method, is_expired, updated_at, expires_at]
+          properties:
+            description:
+              type: string
+              example: "Selling my iPhone 13 Pro Max, 256GB, Space Gray. Perfect condition with original box and charger."
+            author_id:
+              type: integer
+              example: 456
+            contact_visibility:
+              type: string
+              example: "registered"
+            contact_method:
+              type: string
+              example: "both"
+            contact_info:
+              type: object
+              nullable: true
+              description: Contact information (only visible based on contact_visibility rules)
+              properties:
+                phone:
+                  type: string
+                  example: "+27821234567"
+                email:
+                  type: string
+                  example: "seller@example.com"
+            is_expired:
+              type: boolean
+              example: false
+            updated_at:
+              type: string
+              format: date-time
+              example: "2025-07-20T10:30:00Z"
+            expires_at:
+              type: string
+              format: date-time
+              example: "2025-10-20T10:30:00Z"
+            media:
+              type: array
+              items:
+                type: string
+                format: uri
+              description: URLs to ad images
+              example:
+                - "https://example.com/images/12345_1.jpg"
+                - "https://example.com/images/12345_2.jpg"
+
+    UserAdSummary:
+      allOf:
+        - $ref: '#/components/schemas/AdSummary'
+        - type: object
+          required: [status, views, inquiries]
+          properties:
+            status:
+              type: string
+              enum: [active, paused, pending_approval, rejected, expired]
+              example: "active"
+            views:
+              type: integer
+              description: Number of times ad was viewed
+              example: 125
+            inquiries:
+              type: integer
+              description: Number of contact inquiries received
+              example: 5
+
+    AdUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 5
+          maxLength: 100
+        description:
+          type: string
+          minLength: 20
+          maxLength: 2000
+        price:
+          type: number
+          format: float
+          minimum: 0
+        contact_visibility:
+          type: string
+          enum: [by_request, registered, public]
+        contact_method:
+          type: string
+          enum: [phone, email, both]
+        contact_phone:
+          type: string
+          pattern: '^\+?[1-9]\d{1,14}$'
+        contact_email:
+          type: string
+          format: email
+        ad_type:
+          type: string
+          enum: [for_sale, for_rent, wanted]
