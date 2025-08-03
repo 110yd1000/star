@@ -8,6 +8,9 @@ class Category(models.Model):
     
     class Meta:
         verbose_name_plural = "categories"
+    
+    def __str__(self):
+        return self.name
 
 class SubCategory(models.Model):
     category = models.ForeignKey(Category, related_name='subcategories', on_delete=models.PROTECT)
@@ -17,10 +20,16 @@ class SubCategory(models.Model):
     class Meta:
         verbose_name_plural = "subcategories"
         unique_together = ['category', 'slug']
+    
+    def __str__(self):
+        return f"{self.category.name} > {self.name}"
 
 class Province(models.Model):
     name = models.CharField(max_length=100)
     country = models.CharField(max_length=100, default='South Africa')
+    
+    def __str__(self):
+        return f"{self.name}, {self.country}"
 
 class City(models.Model):
     province = models.ForeignKey(Province, related_name='cities', on_delete=models.PROTECT)
@@ -28,6 +37,9 @@ class City(models.Model):
     
     class Meta:
         verbose_name_plural = "cities"
+    
+    def __str__(self):
+        return f"{self.name}, {self.province.name}"
 
 class Ad(models.Model):
     STATUS_CHOICES = [
@@ -134,6 +146,9 @@ class Ad(models.Model):
     def author_id(self):
         """Return author ID for API compatibility"""
         return self.author.id
+    
+    def __str__(self):
+        return f"{self.title} - {self.get_status_display()}"
 
 class AdMedia(models.Model):
     MEDIA_TYPES = [
