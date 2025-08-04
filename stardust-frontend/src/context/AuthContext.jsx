@@ -29,8 +29,8 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      // Verify token and get user info
-      const response = await fetch('/api/accounts/me/', {
+      // Verify token and get user info - FIXED URL
+      const response = await fetch('/accounts/api/accounts/me/', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -55,7 +55,8 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      const response = await fetch('/api/accounts/login/', {
+      // FIXED URL - correct Django endpoint
+      const response = await fetch('/accounts/api/accounts/login/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,13 +77,15 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: data.message || 'Login failed' };
       }
     } catch (error) {
+      console.error('Login error:', error);
       return { success: false, error: 'Network error' };
     }
   };
 
   const register = async (userData) => {
     try {
-      const response = await fetch('/api/accounts/register/', {
+      // FIXED URL - correct Django endpoint
+      const response = await fetch('/accounts/api/accounts/register/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -98,6 +101,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: data.message || 'Registration failed' };
       }
     } catch (error) {
+      console.error('Registration error:', error);
       return { success: false, error: 'Network error' };
     }
   };
@@ -106,13 +110,16 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('authToken');
       if (token) {
-        // Call logout endpoint
-        await fetch('/api/accounts/logout/', {
+        // FIXED URL - correct Django endpoint
+        await fetch('/accounts/api/accounts/logout/', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            refresh_token: localStorage.getItem('refreshToken')
+          }),
         });
       }
     } catch (error) {
@@ -134,7 +141,8 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
 
-      const response = await fetch('/api/accounts/token/refresh/', {
+      // FIXED URL - correct Django endpoint
+      const response = await fetch('/accounts/api/accounts/token/refresh/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -151,6 +159,7 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
     } catch (error) {
+      console.error('Token refresh error:', error);
       logout();
       return false;
     }
@@ -159,7 +168,8 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/accounts/me/', {
+      // FIXED URL - correct Django endpoint
+      const response = await fetch('/accounts/api/accounts/me/', {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -177,6 +187,58 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: data.message || 'Update failed' };
       }
     } catch (error) {
+      console.error('Profile update error:', error);
+      return { success: false, error: 'Network error' };
+    }
+  };
+
+  // Additional helper method for password change
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/accounts/api/accounts/password/change/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword
+        }),
+      });
+
+      if (response.ok) {
+        return { success: true, message: 'Password changed successfully' };
+      } else {
+        const data = await response.json();
+        return { success: false, error: data.message || 'Password change failed' };
+      }
+    } catch (error) {
+      console.error('Password change error:', error);
+      return { success: false, error: 'Network error' };
+    }
+  };
+
+  // Helper method for password reset
+  const resetPassword = async (phoneOrEmail) => {
+    try {
+      const response = await fetch('/accounts/api/accounts/password/reset/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phone_or_email: phoneOrEmail }),
+      });
+
+      if (response.ok) {
+        return { success: true, message: 'Password reset instructions sent' };
+      } else {
+        const data = await response.json();
+        return { success: false, error: data.message || 'Password reset failed' };
+      }
+    } catch (error) {
+      console.error('Password reset error:', error);
       return { success: false, error: 'Network error' };
     }
   };
@@ -190,6 +252,8 @@ export const AuthProvider = ({ children }) => {
     logout,
     refreshToken,
     updateProfile,
+    changePassword,
+    resetPassword,
     checkAuthStatus,
   };
 
