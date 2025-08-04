@@ -1,12 +1,12 @@
-const API_BASE_URL = '/api';
-
+// Remove the base URL since we'll use full paths for different API sections
 class ApiService {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    // No base URL needed - we'll use the full paths
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
+    // endpoint should now be the full path like '/api/v1/ads/categories/'
+    const url = endpoint;
     const token = localStorage.getItem('authToken');
     
     const config = {
@@ -46,7 +46,8 @@ class ApiService {
       const refresh = localStorage.getItem('refreshToken');
       if (!refresh) return false;
 
-      const response = await fetch(`${this.baseURL}/accounts/token/refresh/`, {
+      // Correct Django endpoint for token refresh
+      const response = await fetch('/accounts/api/accounts/token/refresh/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -65,9 +66,9 @@ class ApiService {
     }
   }
 
-  // Authentication endpoints
+  // Authentication endpoints - using correct Django paths
   async login(credentials) {
-    const response = await this.request('/accounts/login/', {
+    const response = await this.request('/accounts/api/accounts/login/', {
       method: 'POST',
       body: JSON.stringify(credentials),
       skipAuth: true,
@@ -76,7 +77,7 @@ class ApiService {
   }
 
   async register(userData) {
-    const response = await this.request('/accounts/register/', {
+    const response = await this.request('/accounts/api/accounts/register/', {
       method: 'POST',
       body: JSON.stringify(userData),
       skipAuth: true,
@@ -85,56 +86,56 @@ class ApiService {
   }
 
   async logout() {
-    const response = await this.request('/accounts/logout/', {
+    const response = await this.request('/accounts/api/accounts/logout/', {
       method: 'POST',
     });
     return response;
   }
 
   async getCurrentUser() {
-    const response = await this.request('/accounts/me/');
+    const response = await this.request('/accounts/api/accounts/me/');
     return response;
   }
 
   async updateProfile(profileData) {
-    const response = await this.request('/accounts/me/', {
+    const response = await this.request('/accounts/api/accounts/me/', {
       method: 'PATCH',
       body: JSON.stringify(profileData),
     });
     return response;
   }
 
-  // Categories endpoints
+  // Categories endpoints - using correct Django v1 API paths
   async getCategories() {
-    const response = await this.request('/ads/categories/', { skipAuth: true });
+    const response = await this.request('/api/v1/ads/categories/', { skipAuth: true });
     return response;
   }
 
   async getCategory(slug) {
-    const response = await this.request(`/ads/categories/${slug}/`, { skipAuth: true });
+    const response = await this.request(`/api/v1/ads/categories/${slug}/`, { skipAuth: true });
     return response;
   }
 
   async getSubcategory(categorySlug, subcategorySlug) {
-    const response = await this.request(`/ads/categories/${categorySlug}/${subcategorySlug}/`, { skipAuth: true });
+    const response = await this.request(`/api/v1/ads/categories/${categorySlug}/${subcategorySlug}/`, { skipAuth: true });
     return response;
   }
 
-  // Ads endpoints
+  // Ads endpoints - using correct Django v1 API paths
   async getAds(params = {}) {
     const queryString = new URLSearchParams(params).toString();
-    const endpoint = `/ads/${queryString ? `?${queryString}` : ''}`;
+    const endpoint = `/api/v1/ads/ads/${queryString ? `?${queryString}` : ''}`;
     const response = await this.request(endpoint, { skipAuth: true });
     return response;
   }
 
   async getAd(id) {
-    const response = await this.request(`/ads/${id}/`, { skipAuth: true });
+    const response = await this.request(`/api/v1/ads/ads/${id}/`, { skipAuth: true });
     return response;
   }
 
   async createAd(adData) {
-    const response = await this.request('/ads/', {
+    const response = await this.request('/api/v1/ads/ads/', {
       method: 'POST',
       body: JSON.stringify(adData),
     });
@@ -142,7 +143,7 @@ class ApiService {
   }
 
   async updateAd(id, adData) {
-    const response = await this.request(`/ads/${id}/`, {
+    const response = await this.request(`/api/v1/ads/ads/${id}/`, {
       method: 'PATCH',
       body: JSON.stringify(adData),
     });
@@ -150,35 +151,50 @@ class ApiService {
   }
 
   async deleteAd(id) {
-    const response = await this.request(`/ads/${id}/`, {
+    const response = await this.request(`/api/v1/ads/ads/${id}/`, {
       method: 'DELETE',
     });
     return response;
   }
 
   async getUserAds() {
-    const response = await this.request('/ads/my-ads/');
+    const response = await this.request('/api/v1/ads/user/ads/');
     return response;
   }
 
-  // Location endpoints
+  // Location endpoints - using correct Django v1 API paths
+  async getLocations() {
+    const response = await this.request('/api/v1/ads/locations/', { skipAuth: true });
+    return response;
+  }
+
+  // Legacy methods for backward compatibility
   async getProvinces() {
-    const response = await this.request('/ads/provinces/', { skipAuth: true });
+    // If you have specific province endpoints, update these paths
+    const response = await this.request('/api/v1/ads/locations/', { skipAuth: true });
     return response;
   }
 
   async getCities(provinceId) {
-    const response = await this.request(`/ads/provinces/${provinceId}/cities/`, { skipAuth: true });
+    // If you have specific city endpoints, update these paths
+    const response = await this.request(`/api/v1/ads/locations/?province=${provinceId}`, { skipAuth: true });
     return response;
   }
 
-  // Media upload
-  async uploadMedia(file, adId) {
+  // Media upload - using correct Django v1 API paths
+  async uploadMedia(files, adId) {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('ad', adId);
+    
+    // Handle multiple files
+    if (Array.isArray(files)) {
+      files.forEach(file => {
+        formData.append('files[]', file);
+      });
+    } else {
+      formData.append('files[]', files);
+    }
 
-    const response = await this.request('/ads/media/', {
+    const response = await this.request(`/api/v1/ads/ads/${adId}/upload-media/`, {
       method: 'POST',
       body: formData,
       headers: {}, // Let browser set Content-Type for FormData
@@ -186,10 +202,65 @@ class ApiService {
     return response;
   }
 
-  // Search
+  // Search - using the correct ads endpoint
   async searchAds(query, filters = {}) {
     const params = { search: query, ...filters };
     return this.getAds(params);
+  }
+
+  // Ad actions
+  async deactivateAd(id) {
+    const response = await this.request(`/api/v1/ads/ads/${id}/deactivate/`, {
+      method: 'POST',
+    });
+    return response;
+  }
+
+  async reactivateAd(id) {
+    const response = await this.request(`/api/v1/ads/ads/${id}/reactivate/`, {
+      method: 'POST',
+    });
+    return response;
+  }
+
+  // Password management
+  async changePassword(currentPassword, newPassword) {
+    const response = await this.request('/accounts/api/accounts/password/change/', {
+      method: 'POST',
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword
+      }),
+    });
+    return response;
+  }
+
+  async resetPassword(phoneOrEmail) {
+    const response = await this.request('/accounts/api/accounts/password/reset/', {
+      method: 'POST',
+      body: JSON.stringify({ phone_or_email: phoneOrEmail }),
+      skipAuth: true,
+    });
+    return response;
+  }
+
+  // Email/Phone verification
+  async verifyEmail(key) {
+    const response = await this.request('/accounts/api/accounts/verify/email/', {
+      method: 'POST',
+      body: JSON.stringify({ key }),
+      skipAuth: true,
+    });
+    return response;
+  }
+
+  async verifyPhone(phone, otp) {
+    const response = await this.request('/accounts/api/accounts/verify/phone/', {
+      method: 'POST',
+      body: JSON.stringify({ phone, otp }),
+      skipAuth: true,
+    });
+    return response;
   }
 }
 
