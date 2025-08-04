@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, User, Lock, Mail, Phone, UserPlus } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
-  const [isRegistering, setIsRegistering] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login, register, isAuthenticated } = useAuth();
+  
+  // Check if we should show register form based on route
+  const [isRegistering, setIsRegistering] = useState(location.pathname === '/register');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -15,6 +22,18 @@ const Login = () => {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Update form mode based on route changes
+  useEffect(() => {
+    setIsRegistering(location.pathname === '/register');
+  }, [location.pathname]);
 
   // Validation functions
   const validateEmail = (email) => {
@@ -96,43 +115,33 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const endpoint = isRegistering 
-        ? '/api/accounts/register/'
-        : '/api/accounts/login/';
-      
-      const payload = isRegistering 
-        ? {
-            email: validateEmail(formData.identifier) ? formData.identifier : null,
-            phone_number: validatePhone(formData.identifier) ? formData.identifier : null,
-            full_name: `${formData.firstName} ${formData.lastName}`,
-            password: formData.password
-          }
-        : {
-            [validateEmail(formData.identifier) ? 'email' : 'phone']: formData.identifier,
-            password: formData.password
-          };
+      if (isRegistering) {
+        const userData = {
+          email: validateEmail(formData.identifier) ? formData.identifier : null,
+          phone_number: validatePhone(formData.identifier) ? formData.identifier : null,
+          full_name: `${formData.firstName} ${formData.lastName}`,
+          password: formData.password
+        };
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        if (!isRegistering) {
-          localStorage.setItem('authToken', data.access);
-          localStorage.setItem('refreshToken', data.refresh);
-          window.location.href = '/';
+        const result = await register(userData);
+        if (result.success) {
+          alert(result.message);
+          navigate('/login');
         } else {
-          alert('Registration successful! Please verify your email/phone.');
-          setIsRegistering(false);
+          setErrors({ submit: result.error });
         }
       } else {
-        setErrors({ submit: data.message || 'An error occurred' });
+        const credentials = {
+          [validateEmail(formData.identifier) ? 'email' : 'phone']: formData.identifier,
+          password: formData.password
+        };
+
+        const result = await login(credentials);
+        if (result.success) {
+          navigate('/');
+        } else {
+          setErrors({ submit: result.error });
+        }
       }
     } catch (error) {
       setErrors({ submit: 'Network error' });
@@ -142,9 +151,12 @@ const Login = () => {
   };
 
   const toggleMode = () => {
-    setIsRegistering(!isRegistering);
+    const newMode = !isRegistering;
+    setIsRegistering(newMode);
+    navigate(newMode ? '/register' : '/login');
     setErrors({});
-    if (!isRegistering) {
+    
+    if (newMode) {
       // Switching to register mode - keep identifier, clear rest
       setFormData(prev => ({
         ...prev,
@@ -179,17 +191,17 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 border border-slate-200">
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center mb-4">
+          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full flex items-center justify-center mb-4 shadow-lg">
             {isRegistering ? <UserPlus className="w-8 h-8 text-white" /> : <User className="w-8 h-8 text-white" />}
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">
+          <h2 className="text-3xl font-bold text-slate-900">
             {isRegistering ? 'Create Account' : 'Welcome Back'}
           </h2>
-          <p className="text-gray-600 mt-2">
-            {isRegistering 
+          <p className="text-slate-600 mt-2">
+            {isRegistering
               ? 'Sign up to get started with your account'
               : 'Please sign in to your account'
             }
@@ -201,7 +213,7 @@ const Login = () => {
           {isRegistering && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   First Name
                 </label>
                 <input
@@ -209,8 +221,8 @@ const Login = () => {
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
-                    errors.firstName ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors bg-slate-50 hover:bg-white ${
+                    errors.firstName ? 'border-red-500' : 'border-slate-300'
                   }`}
                   placeholder="John"
                 />
@@ -219,7 +231,7 @@ const Login = () => {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Last Name
                 </label>
                 <input
@@ -227,8 +239,8 @@ const Login = () => {
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
-                    errors.lastName ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors bg-slate-50 hover:bg-white ${
+                    errors.lastName ? 'border-red-500' : 'border-slate-300'
                   }`}
                   placeholder="Doe"
                 />
@@ -241,7 +253,7 @@ const Login = () => {
 
           {/* Email or Phone field */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
               Email or Phone Number
             </label>
             <div className="relative">
@@ -253,8 +265,8 @@ const Login = () => {
                 name="identifier"
                 value={formData.identifier}
                 onChange={handleInputChange}
-                className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
-                  errors.identifier ? 'border-red-500' : 'border-gray-300'
+                className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors bg-slate-50 hover:bg-white ${
+                  errors.identifier ? 'border-red-500' : 'border-slate-300'
                 }`}
                 placeholder={getIdentifierPlaceholder()}
               />
@@ -266,20 +278,20 @@ const Login = () => {
 
           {/* Password field */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
               Password
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="w-5 h-5 text-gray-400" />
+                <Lock className="w-5 h-5 text-slate-400" />
               </div>
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className={`w-full pl-12 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
-                  errors.password ? 'border-red-500' : 'border-gray-300'
+                className={`w-full pl-12 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors bg-slate-50 hover:bg-white ${
+                  errors.password ? 'border-red-500' : 'border-slate-300'
                 }`}
                 placeholder="Enter your password"
               />
@@ -289,9 +301,9 @@ const Login = () => {
                 className="absolute inset-y-0 right-0 pr-3 flex items-center"
               >
                 {showPassword ? (
-                  <EyeOff className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                  <EyeOff className="w-5 h-5 text-slate-400 hover:text-slate-600" />
                 ) : (
-                  <Eye className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                  <Eye className="w-5 h-5 text-slate-400 hover:text-slate-600" />
                 )}
               </button>
             </div>
@@ -303,20 +315,20 @@ const Login = () => {
           {/* Confirm Password field (registration only) */}
           {isRegistering && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Confirm Password
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="w-5 h-5 text-gray-400" />
+                  <Lock className="w-5 h-5 text-slate-400" />
                 </div>
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
-                  className={`w-full pl-12 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors ${
-                    errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full pl-12 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors bg-slate-50 hover:bg-white ${
+                    errors.confirmPassword ? 'border-red-500' : 'border-slate-300'
                   }`}
                   placeholder="Confirm your password"
                 />
@@ -326,9 +338,9 @@ const Login = () => {
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
                   {showConfirmPassword ? (
-                    <EyeOff className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                    <EyeOff className="w-5 h-5 text-slate-400 hover:text-slate-600" />
                   ) : (
-                    <Eye className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                    <Eye className="w-5 h-5 text-slate-400 hover:text-slate-600" />
                   )}
                 </button>
               </div>
@@ -347,15 +359,15 @@ const Login = () => {
                   name="acceptTerms"
                   checked={formData.acceptTerms}
                   onChange={handleInputChange}
-                  className="mt-1 w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                  className="mt-1 w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                 />
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-slate-600">
                   I agree to the{' '}
-                  <a href="/terms" className="text-indigo-600 hover:text-indigo-800 underline">
+                  <a href="/terms" className="text-blue-600 hover:text-blue-800 underline">
                     Terms of Service
                   </a>{' '}
                   and{' '}
-                  <a href="/privacy" className="text-indigo-600 hover:text-indigo-800 underline">
+                  <a href="/privacy" className="text-blue-600 hover:text-blue-800 underline">
                     Privacy Policy
                   </a>
                 </span>
@@ -371,10 +383,10 @@ const Login = () => {
             type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-800 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg hover:shadow-xl"
           >
-            {loading 
-              ? (isRegistering ? 'Creating Account...' : 'Signing In...') 
+            {loading
+              ? (isRegistering ? 'Creating Account...' : 'Signing In...')
               : (isRegistering ? 'Create Account' : 'Sign In')
             }
           </button>
@@ -390,9 +402,9 @@ const Login = () => {
           <button
             type="button"
             onClick={toggleMode}
-            className="text-indigo-600 hover:text-indigo-800 font-medium"
+            className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200"
           >
-            {isRegistering 
+            {isRegistering
               ? 'Already have an account? Sign in here'
               : "Don't have an account? Create one here"
             }
@@ -402,7 +414,7 @@ const Login = () => {
         {/* Forgot password link (login only) */}
         {!isRegistering && (
           <div className="mt-4 text-center">
-            <a href="/forgot-password" className="text-sm text-gray-600 hover:text-gray-800">
+            <a href="/forgot-password" className="text-sm text-slate-600 hover:text-slate-800 transition-colors duration-200">
               Forgot your password?
             </a>
           </div>
