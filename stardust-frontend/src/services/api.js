@@ -163,6 +163,11 @@ class ApiService {
   }
 
   // Location endpoints - using correct Django v1 API paths
+  async getCountries() {
+    const response = await this.request('/api/v1/ads/countries/', { skipAuth: true });
+    return response;
+  }
+
   async getLocations() {
     const response = await this.request('/api/v1/ads/locations/', { skipAuth: true });
     return response;
@@ -185,13 +190,13 @@ class ApiService {
   async uploadMedia(files, adId) {
     const formData = new FormData();
     
-    // Handle multiple files
+    // Handle multiple files - backend expects 'files' not 'files[]'
     if (Array.isArray(files)) {
       files.forEach(file => {
-        formData.append('files[]', file);
+        formData.append('files', file);
       });
     } else {
-      formData.append('files[]', files);
+      formData.append('files', files);
     }
 
     const response = await this.request(`/api/v1/ads/ads/${adId}/upload-media/`, {

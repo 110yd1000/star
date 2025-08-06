@@ -2,6 +2,22 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 
+class Country(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=3, unique=True, help_text="ISO 3166-1 alpha-3 code")
+    currency_code = models.CharField(max_length=3, help_text="ISO 4217 currency code")
+    
+    class Meta:
+        verbose_name_plural = "countries"
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['name']),
+            models.Index(fields=['code']),
+        ]
+    
+    def __str__(self):
+        return self.name
+
 class Category(models.Model):
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True)
@@ -25,11 +41,17 @@ class SubCategory(models.Model):
         return f"{self.category.name} > {self.name}"
 
 class Province(models.Model):
+    country = models.ForeignKey(Country, related_name='provinces', on_delete=models.PROTECT)
     name = models.CharField(max_length=100)
-    country = models.CharField(max_length=100, default='South Africa')
+    
+    class Meta:
+        unique_together = ['country', 'name']
+        indexes = [
+            models.Index(fields=['country', 'name']),
+        ]
     
     def __str__(self):
-        return f"{self.name}, {self.country}"
+        return f"{self.name}, {self.country.name}"
 
 class City(models.Model):
     province = models.ForeignKey(Province, related_name='cities', on_delete=models.PROTECT)
@@ -91,6 +113,7 @@ class Ad(models.Model):
 
     # Categories and Location
     subcategory = models.ForeignKey(SubCategory, on_delete=models.PROTECT)
+    country = models.ForeignKey(Country, on_delete=models.PROTECT, default=1)
     province = models.ForeignKey(Province, on_delete=models.PROTECT)
     city = models.ForeignKey(City, on_delete=models.PROTECT)
     
@@ -127,6 +150,8 @@ class Ad(models.Model):
         indexes = [
             models.Index(fields=['status', 'created_at']),
             models.Index(fields=['subcategory']),
+            models.Index(fields=['country']),
+            models.Index(fields=['province']),
             models.Index(fields=['city']),
             models.Index(fields=['price']),
             models.Index(fields=['author'])
@@ -140,6 +165,9 @@ class Ad(models.Model):
     @property
     def is_expired(self):
         """Check if the ad has expired"""
+        if not hasattr(self, 'expires_at') or self.expires_at is None:
+        # Handle case where expires_at doesn't exist or is None
+            return False
         return timezone.now() > self.expires_at
     
     @property

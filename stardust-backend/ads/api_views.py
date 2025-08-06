@@ -16,10 +16,11 @@ import uuid
 import logging
 import os
 
-from .models import Ad, Category, SubCategory, Province, City, AdMedia
+from .models import Ad, Category, SubCategory, Country, Province, City, AdMedia
 from .serializers import (
     CategoryWithSubcategoriesSerializer, CountryWithProvincesSerializer,
-    AdCreateSerializer, AdSummarySerializer, AdDetailSerializer, 
+    CountrySerializer, CountryListSerializer,
+    AdCreateSerializer, AdSummarySerializer, AdDetailSerializer,
     AdUpdateSerializer, UserAdSummarySerializer, AdMediaSerializer,
     PaginationInfoSerializer
 )
@@ -68,34 +69,37 @@ class CategoriesView(APIView):
             )
 
 
+class CountriesView(APIView):
+    """Get all countries"""
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request):
+        try:
+            countries = Country.objects.all()
+            serializer = CountryListSerializer(countries, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error fetching countries: {str(e)}")
+            return Response(
+                {
+                    "error": "internal_server_error",
+                    "message": "An unexpected error occurred. Please try again later."
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 class LocationsView(APIView):
     """Get supported countries, provinces, and cities"""
     permission_classes = [permissions.AllowAny]
     
     def get(self, request):
         try:
-            # Group provinces by country
-            countries_data = []
-            countries = Province.objects.values_list('country', flat=True).distinct()
-            
-            for country in countries:
-                provinces = Province.objects.filter(country=country).prefetch_related('cities')
-                provinces_data = []
-                
-                for province in provinces:
-                    cities_data = [{'id': city.id, 'name': city.name} for city in province.cities.all()]
-                    provinces_data.append({
-                        'id': province.id,
-                        'name': province.name,
-                        'cities': cities_data
-                    })
-                
-                countries_data.append({
-                    'country': country,
-                    'provinces': provinces_data
-                })
-            
-            return Response(countries_data, status=status.HTTP_200_OK)
+            countries = Country.objects.prefetch_related(
+                'provinces__cities'
+            ).all()
+            serializer = CountrySerializer(countries, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Error fetching locations: {str(e)}")
             return Response(
@@ -120,13 +124,13 @@ class AdViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             # Public endpoints - only show active ads
             return Ad.objects.filter(status='active').select_related(
-                'subcategory__category', 'province', 'city', 'author'
+                'subcategory__category', 'country', 'province', 'city', 'author'
             ).prefetch_related('media')
         else:
             # Authenticated endpoints - show user's own ads
             if self.request.user.is_authenticated:
                 return Ad.objects.filter(author=self.request.user).select_related(
-                    'subcategory__category', 'province', 'city'
+                    'subcategory__category', 'country', 'province', 'city'
                 ).prefetch_related('media')
             return Ad.objects.none()
     
@@ -418,7 +422,7 @@ class UserAdsView(APIView):
         status_filter = request.query_params.get('status')
         
         queryset = Ad.objects.filter(author=request.user).select_related(
-            'subcategory__category', 'province', 'city'
+            'subcategory__category', 'country', 'province', 'city'
         ).prefetch_related('media')
         
         if status_filter:

@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import CategoryViewSet, AdViewSet
-from .api_views import CategoriesView, LocationsView, AdViewSet as NewAdViewSet, UserAdsView
+from .api_views import CategoriesView, CountriesView, LocationsView, AdViewSet as NewAdViewSet, UserAdsView
 
 # Legacy router for existing views
 router = DefaultRouter()
@@ -14,6 +14,7 @@ api_patterns = [
     path('categories/', CategoriesView.as_view(), name='categories'),
     
     # Geography
+    path('countries/', CountriesView.as_view(), name='countries'),
     path('locations/', LocationsView.as_view(), name='locations'),
     
     # Ads CRUD

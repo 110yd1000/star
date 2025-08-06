@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Ad, Category, SubCategory, AdMedia, Province, City
+from .models import Ad, Category, SubCategory, AdMedia, Country, Province, City
 from django.utils import timezone
 import re
 
@@ -70,12 +70,20 @@ class ProvinceSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'cities']
 
 
+class CountrySerializer(serializers.ModelSerializer):
+    provinces = ProvinceSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = Country
+        fields = ['id', 'name', 'code', 'currency_code', 'provinces']
+
+
 class AdCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ad
         fields = [
             'title', 'description', 'price', 'currency_code',
-            'currency_symbol', 'subcategory', 'province', 'city',
+            'currency_symbol', 'subcategory', 'country', 'province', 'city',
             'ad_type', 'contact_visibility', 'contact_method',
             'contact_phone', 'contact_email'
         ]
@@ -213,6 +221,13 @@ class UserAdSummarySerializer(AdSummarySerializer):
 class CountryWithProvincesSerializer(serializers.Serializer):
     country = serializers.CharField()
     provinces = ProvinceSerializer(many=True)
+
+
+class CountryListSerializer(serializers.ModelSerializer):
+    """Simplified Country serializer for dropdown lists"""
+    class Meta:
+        model = Country
+        fields = ['id', 'name', 'code']
 
 
 class PaginationInfoSerializer(serializers.Serializer):

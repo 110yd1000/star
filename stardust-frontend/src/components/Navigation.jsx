@@ -54,6 +54,14 @@ const Navigation = () => {
               Home
             </Link>
 
+            {/* Browse Ads Link */}
+            <Link
+              to="/ads"
+              className="text-slate-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+            >
+              Browse Ads
+            </Link>
+
             {/* Search Bar */}
             <form onSubmit={handleSearch} className="relative">
               <div className="relative">
@@ -183,6 +191,14 @@ const Navigation = () => {
                   onClick={() => setShowMobileMenu(false)}
                 >
                   Home
+                </Link>
+
+                <Link
+                  to="/ads"
+                  className="block px-4 py-2 text-slate-700 hover:text-blue-600 hover:bg-slate-50 rounded-md transition-colors duration-200"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  Browse Ads
                 </Link>
 
                 {isAuthenticated ? (

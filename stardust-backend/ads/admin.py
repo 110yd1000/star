@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, SubCategory, Province, City, Ad, AdMedia
+from .models import Category, SubCategory, Country, Province, City, Ad, AdMedia
 
 # Inline classes for better hierarchical editing
 class SubCategoryInline(admin.TabularInline):
@@ -7,6 +7,11 @@ class SubCategoryInline(admin.TabularInline):
     extra = 1
     prepopulated_fields = {'slug': ('name',)}
     fields = ['name', 'slug']
+
+class ProvinceInline(admin.TabularInline):
+    model = Province
+    extra = 1
+    fields = ['name']
 
 class CityInline(admin.TabularInline):
     model = City
@@ -20,6 +25,17 @@ class AdMediaInline(admin.TabularInline):
     readonly_fields = ['upload_date']
 
 # Main admin classes
+@admin.register(Country)
+class CountryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'code', 'currency_code', 'province_count']
+    search_fields = ['name', 'code']
+    list_filter = ['currency_code']
+    inlines = [ProvinceInline]
+    
+    def province_count(self, obj):
+        return obj.provinces.count()
+    province_count.short_description = 'Provinces'
+
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ['name', 'slug', 'subcategory_count']
@@ -47,7 +63,8 @@ class SubCategoryAdmin(admin.ModelAdmin):
 class ProvinceAdmin(admin.ModelAdmin):
     list_display = ['name', 'country', 'city_count']
     list_filter = ['country']
-    search_fields = ['name', 'country']
+    search_fields = ['name', 'country__name']
+    autocomplete_fields = ['country']
     inlines = [CityInline]
     
     def city_count(self, obj):
@@ -57,12 +74,12 @@ class ProvinceAdmin(admin.ModelAdmin):
 @admin.register(City)
 class CityAdmin(admin.ModelAdmin):
     list_display = ['name', 'province', 'province_country', 'ad_count']
-    list_filter = ['province', 'province__country']
-    search_fields = ['name', 'province__name', 'province__country']
+    list_filter = ['province__country', 'province']
+    search_fields = ['name', 'province__name', 'province__country__name']
     autocomplete_fields = ['province']
     
     def province_country(self, obj):
-        return f"{obj.province.country}"
+        return f"{obj.province.country.name}"
     province_country.short_description = 'Country'
     
     def ad_count(self, obj):
@@ -72,18 +89,18 @@ class CityAdmin(admin.ModelAdmin):
 @admin.register(Ad)
 class AdAdmin(admin.ModelAdmin):
     list_display = [
-        'title', 'author', 'subcategory', 'city_province', 
+        'title', 'author', 'subcategory', 'location_display',
         'price_display', 'status', 'ad_type', 'created_at'
     ]
     list_filter = [
         'status', 'ad_type', 'contact_method', 'subcategory__category',
-        'province', 'created_at'
+        'country', 'province', 'created_at'
     ]
     search_fields = [
-        'title', 'description', 'author__email', 'author__first_name', 
+        'title', 'description', 'author__email', 'author__first_name',
         'author__last_name', 'subcategory__name', 'city__name'
     ]
-    autocomplete_fields = ['author', 'subcategory', 'province', 'city']
+    autocomplete_fields = ['author', 'subcategory', 'country', 'province', 'city']
     readonly_fields = ['views', 'inquiries', 'created_at', 'updated_at', 'is_expired']
     date_hierarchy = 'created_at'
     inlines = [AdMediaInline]
@@ -93,7 +110,7 @@ class AdAdmin(admin.ModelAdmin):
             'fields': ('title', 'description', 'author')
         }),
         ('Category & Location', {
-            'fields': ('subcategory', 'province', 'city')
+            'fields': ('subcategory', 'country', 'province', 'city')
         }),
         ('Pricing', {
             'fields': ('price', 'currency_code', 'currency_symbol')
@@ -113,9 +130,9 @@ class AdAdmin(admin.ModelAdmin):
         })
     )
     
-    def city_province(self, obj):
-        return f"{obj.city.name}, {obj.province.name}"
-    city_province.short_description = 'Location'
+    def location_display(self, obj):
+        return f"{obj.city.name}, {obj.province.name}, {obj.country.name}"
+    location_display.short_description = 'Location'
     
     def price_display(self, obj):
         return f"{obj.currency_symbol}{obj.price}"
@@ -123,7 +140,7 @@ class AdAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related(
-            'author', 'subcategory', 'subcategory__category', 'province', 'city'
+            'author', 'subcategory', 'subcategory__category', 'country', 'province', 'city'
         )
 
 @admin.register(AdMedia)
@@ -145,5 +162,6 @@ class AdMediaAdmin(admin.ModelAdmin):
 # Enable autocomplete for models that are referenced frequently
 Category.search_fields = ['name']
 SubCategory.search_fields = ['name', 'category__name']
-Province.search_fields = ['name', 'country']
+Country.search_fields = ['name', 'code']
+Province.search_fields = ['name', 'country__name']
 City.search_fields = ['name', 'province__name']

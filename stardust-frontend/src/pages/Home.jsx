@@ -115,7 +115,7 @@ const Home = () => {
                     {(category.subcategories || []).slice(0, 5).map((sub) => (
                       <Link
                         key={sub.id}
-                        to={`/category/${category.slug}/${sub.slug}`}
+                        to={`/ads?subcategory=${sub.id}`}
                         className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors group/sub"
                       >
                         <span className="text-slate-700 group-hover/sub:text-blue-600 transition-colors">
@@ -129,7 +129,7 @@ const Home = () => {
                     
                     {(category.subcategories || []).length > 5 && (
                       <Link
-                        to={`/category/${category.slug}`}
+                        to={`/ads?category=${category.id}`}
                         className="flex items-center justify-center p-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors font-medium"
                       >
                         View all subcategories
@@ -142,7 +142,7 @@ const Home = () => {
                 {/* Category Link */}
                 <div className="px-6 pb-6">
                   <Link
-                    to={`/category/${category.slug}`}
+                    to={`/ads?category=${category.id}`}
                     className="block w-full text-center py-3 bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 font-medium rounded-lg transition-all duration-200"
                   >
                     View All in {category.name}

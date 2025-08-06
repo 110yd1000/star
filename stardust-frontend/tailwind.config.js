@@ -4,5 +4,8 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  // v4 uses different configuration structure
+  theme: {
+    extend: {},
+  },
+  plugins: [],
 }
